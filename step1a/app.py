@@ -16,12 +16,12 @@ def list():
   for x in ret:
       print (x)
       mylist.append({'title':x['title'], 'description':x['description'], 'done':x['done']})
-  return jsonify({'SaylaniStudents': mylist})
+  return jsonify({'Tasks': mylist})
 
 @app.route('/todo/api/v1.0/tasks/<id>',methods=['GET'])
 def listone(id):
   x=mongo.db.tasks.find_one_or_404({'_id': bson.ObjectId(oid=str(id))})
-  return jsonify({'SaylaniStudents': {'title':x['title'], 'description':x['description'], 'done':x['done']}})
+  return jsonify({'Task': {'title':x['title'], 'description':x['description'], 'done':x['done']}})
 
 @app.route('/todo/api/v1.0/tasks',methods=['POST'])
 def add():
@@ -32,7 +32,7 @@ def add():
   for x in ret:
       print (x)
       mylist.append({'title':x['title'], 'description':x['description'], 'done':x['done']})
-  return jsonify({'SaylaniStudents': mylist})
+  return jsonify({'Tasks': mylist})
   #return 'Added success'
 
 
@@ -41,13 +41,19 @@ def add():
 def updateTask(id):
   x=mongo.db.tasks.find_one_or_404({'_id': bson.ObjectId(oid=str(id))})
   dataDict=json.loads(request.data)
-  if dataDict['title'] is not None:
-    x.title=dataDict['title']
-  if dataDict['description'] is not None:
-    x.title=dataDict['description']
-  if dataDict['done'] is not None:
-    x.title=dataDict['done']
+  if 'title' in dataDict:
+    x['title']=dataDict['title']
+  if 'description' in dataDict:
+    x['description']=dataDict['description']
+  if 'done' in dataDict:
+    if dataDict['done']=='true': x['done']=True
+    else: x['done']=False
   mongo.db.tasks.save(x)
+  return "Success"
+
+@app.route('/todo/api/v1.0/tasks/<id>',methods=['DELETE'])
+def deleteTask(id):
+  x=mongo.db.tasks.delete_one({'_id': bson.ObjectId(oid=str(id))})
   return "Success"
 
 @app.route("/")

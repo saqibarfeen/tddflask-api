@@ -1,53 +1,74 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
-import os , bson , json
+import bson , json
 
-app= Flask(__name__ ,static_url_path='')
 
-app.config['MONGO_DBNAME']='tddapi_flask'
-app.config['MONGO_URI']= 'mongodb://saqib:pakistan12@ds159459.mlab.com:59459/tddapi_flask'
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
-mongo=PyMongo(app)
+app= Flask(__name__ )
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./test.db'
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
+class Task(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(80))
+    description = db.Column(db.Text)
+    done= db.Column(db.Boolean, default=False)
+
+    def __init__(self, title, description, done=False):
+        self.title = title
+        self.description = description
+#get all
 @app.route('/todo/api/v1.0/tasks',methods=['GET'])
 def list():
   mylist=[]
-  ret= mongo.db.tasks.find()
+  ret= Task.query.all()
   for x in ret:
       print (x)
-      mylist.append({'title':x['title'], 'description':x['description'], 'done':x['done']})
-  return jsonify({'SaylaniStudents': mylist})
+      mylist.append({'title':x.title, 'description':x.description, 'done':x.done})
+  return jsonify({'Tasks': mylist})
 
 @app.route('/todo/api/v1.0/tasks/<id>',methods=['GET'])
 def listone(id):
-  x=mongo.db.tasks.find_one_or_404({'_id': bson.ObjectId(oid=str(id))})
-  return jsonify({'SaylaniStudents': {'title':x['title'], 'description':x['description'], 'done':x['done']}})
+  x=Task.query.filter_by(id=id).first_or_404()
+  return jsonify({'Task': {'title':x.title, 'description':x.description, 'done':x.done}})
 
 @app.route('/todo/api/v1.0/tasks',methods=['POST'])
 def add():
   #add = mongo.db.tasks.insert({'title':'Pray Fajr' , 'description':'Configure alarm and rise for Fajr', 'done':False})
-  add = mongo.db.tasks.insert({'title':request.form['title'] , 'description':request.form['description'], 'done':request.form['done']})
-  ret= mongo.db.tasks.find()
+  add = Task(title = request.form['title'] , description= request.form['description'], done=request.form['done'])
+  db.session.add(add)
+  db.session.commit()
+  ret= Task.query.all()
   mylist=[]
   for x in ret:
       print (x)
-      mylist.append({'title':x['title'], 'description':x['description'], 'done':x['done']})
-  return jsonify({'SaylaniStudents': mylist})
-  #return 'Added success'
+      mylist.append({'title':x.title, 'description':x.description, 'done':x.done})
+  return jsonify({'Tasks': mylist})
 
-
-## update ````````````
+#update
 @app.route('/todo/api/v1.0/tasks/<id>',methods=['PUT'])
 def updateTask(id):
-  x=mongo.db.tasks.find_one_or_404({'_id': bson.ObjectId(oid=str(id))})
+  x=Task.query.filter_by(id=id).first_or_404()
   dataDict=json.loads(request.data)
-  if dataDict['title'] is not None:
+  if 'title' in dataDict:
     x.title=dataDict['title']
-  if dataDict['description'] is not None:
-    x.title=dataDict['description']
-  if dataDict['done'] is not None:
-    x.title=dataDict['done']
-  mongo.db.tasks.save(x)
+  if 'description' in dataDict:
+    x.description=dataDict['description']
+  if 'done' in dataDict:
+    if dataDict['done']=='true': x.done=True
+    else: x.done=False
+  db.session.commit()
+  return "Success"
+
+#delete
+@app.route('/todo/api/v1.0/tasks/<id>',methods=['DELETE'])
+def updateTask(id):
+  x=Task.query.filter_by(id=id).first_or_404()
+  db.session.delete(x)
+  db.session.commit()
   return "Success"
 
 @app.route("/")
